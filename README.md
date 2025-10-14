@@ -60,10 +60,13 @@ The workflow is:
 
 ## Dataset
 
-The model can be trained on datasets such as:
+<em>The model can be trained on datasets such as:</em>
 
-- [IMDB Large Movie Review Dataset](https://ai.stanford.edu/~amaas/data/sentiment/)  
-- Kaggle movie review datasets: [Kaggle Movie Reviews](https://www.kaggle.com/datasets)  
+[![Kaggle Datasets](https://img.shields.io/badge/Kaggle-Movie_Reviews-lightgrey?style=for-the-badge&logo=kaggle)](https://www.kaggle.com/datasets)
+
+[![IMDB Dataset](https://img.shields.io/badge/IMDB-Large_Movie_Review-blue?style=for-the-badge&logo=imdb)](https://ai.stanford.edu/~amaas/data/sentiment/)
+
+---
 
 **Columns required:**  
 
