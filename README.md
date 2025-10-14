@@ -14,10 +14,8 @@ This project demonstrates **Natural Language Processing (NLP)**, machine learnin
 - [Dataset](#dataset)  
 - [Project Structure](#project-structure)  
 - [Installation](#installation)  
-- [Data Preprocessing](#data-preprocessing)  
-- [Model Training](#model-training)  
+- [Data Preprocessing](#Preprocessing-&-Feature-Extraction (Optimized with Swifter))  
 - [Streamlit Web App](#streamlit-web-app)  
-- [Deployment](#deployment)  
 - [Screenshots](#screenshots)  
 - [Contributing](#contributing)  
 - [License](#license)  
@@ -126,5 +124,96 @@ nltk.download('stopwords')
 nltk.download('punkt')
 nltk.download('wordnet')
 ```
+
+## Preprocessing & Feature Extraction (Optimized with Swifter)
+
+<em>This section covers the steps to clean movie reviews, tokenize them safely using the Word2Vec vocabulary, and convert them into document vectors for modeling.</em>
+
+---
+
+### 1️⃣ Clean and Preprocess Text
+
+Steps applied to each review:
+
+1. Lowercase all text  
+2. Remove punctuation and special characters  
+3. Tokenize sentences into words  
+4. Remove stopwords  
+5. Lemmatize words  
+
+```python
+import swifter
+import pandas as pd
+import re
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+
+# Download NLTK resources
+nltk.download('stopwords')
+nltk.download('punkt')
+nltk.download('wordnet')
+
+# Initialize stopwords and lemmatizer
+stop_words = set(stopwords.words('english'))
+lemmatizer = WordNetLemmatizer()
+
+# Preprocessing function
+def preprocess_text(text):
+    text = text.lower()  # Lowercase
+    text = re.sub(r'[^a-z\s]', '', text)  # Remove punctuation & special chars
+    tokens = word_tokenize(text)  # Tokenize
+    tokens = [lemmatizer.lemmatize(word) for word in tokens if word not in stop_words]  # Remove stopwords & lemmatize
+    return tokens
+
+# Apply preprocessing with Swifter
+movie_df['tokens'] = movie_df['review'].swifter.apply(preprocess_text)
+```
+<em>Tip: Swifter automatically detects if parallel processing is possible, significantly speeding up operations on large datasets.</em>
+
+### 2️⃣ Tokenize Reviews Using Word2Vec Vocabulary
+
+After training the Word2Vec model, filter tokens to keep only words present in the vocabulary.
+```python
+# Extract vocabulary set from the Word2Vec model
+vocab_set = set(model.wv.index_to_key)
+
+# Safe tokenization function
+def tokenize_review_safe(review, vocab):
+    if not isinstance(review, str):
+        return []
+    return [w for w in review.split() if w in vocab]
+
+# Apply safe tokenization with Swifter
+movie_df['tokens'] = movie_df['review'].swifter.apply(
+    lambda x: tokenize_review_safe(x, vocab_set)
+)
+```
+Notes:
+- Only words present in the Word2Vec vocabulary are kept.
+- Handles non-string entries gracefully by returning an empty list.
+
+### 3️⃣ Convert Tokenized Reviews to Document Vectors
+
+Each review is represented as a fixed-size vector by averaging the embeddings of its tokens.
+```python
+import numpy as np
+
+# Function to convert tokenized review into a document vector
+def document_vector_fast(tokens):
+    if len(tokens) == 0:
+        return np.zeros(model.vector_size, dtype=np.float32)  # Handle empty token lists
+    return np.mean(model.wv[tokens], axis=0)  # Average Word2Vec embeddings
+
+# Apply the function using Swifter for faster computation
+movie_vectors = np.vstack(
+    movie_df['tokens'].swifter.apply(document_vector_fast).values
+)
+```
+Notes:
+- Returns a zero vector for empty token lists to avoid errors.
+- Converts each review into a numerical vector suitable for machine learning models.
+- Swifter significantly speeds up vectorization for large datasets.
 
 
