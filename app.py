@@ -8,9 +8,7 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 import nltk
 
-# -------------------------
-# NLTK Downloads
-# -------------------------
+
 nltk.download('punkt')
 nltk.download('stopwords')
 nltk.download('wordnet')
@@ -20,9 +18,7 @@ nltk.download('wordnet')
 # -------------------------
 st.set_page_config(page_title="IMDB Sentiment Analyzer", page_icon="💬", layout="centered")
 
-# -------------------------
-# Load Models
-# -------------------------
+
 model = joblib.load("final_model.pkl")
 w2v_model = Word2Vec.load("word2vec.model")
 tfidf = joblib.load("tfidf.pkl")
@@ -250,9 +246,7 @@ if "history" in st.session_state and len(st.session_state.history) > 0:
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-# -------------------------
-# Footer
-# -------------------------
+
 st.markdown("---")
 st.markdown("""
 <div class="footer">
