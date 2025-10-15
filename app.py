@@ -2,6 +2,18 @@ import streamlit as st
 import joblib
 from gensim.models import Word2Vec
 import numpy as np
+import re
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+import nltk
+
+# -------------------------
+# NLTK Downloads
+# -------------------------
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
 
 # -------------------------
 # Page Config
@@ -13,16 +25,36 @@ st.set_page_config(page_title="IMDB Sentiment Analyzer", page_icon="💬", layou
 # -------------------------
 model = joblib.load("final_model.pkl")
 w2v_model = Word2Vec.load("word2vec.model")
-
-def vectorize_review(review, w2v_model):
-    tokens = review.lower().split()
-    vectors = [w2v_model.wv[word] for word in tokens if word in w2v_model.wv]
-    if len(vectors) == 0:
-        return np.zeros(w2v_model.vector_size)
-    return np.mean(vectors, axis=0)
+tfidf = joblib.load("tfidf.pkl")
 
 # -------------------------
-# Fixed Theme Colors (Light)
+# Preprocessing
+# -------------------------
+stop_words = set(stopwords.words('english'))
+lemmatizer = WordNetLemmatizer()
+
+def preprocess_review(review):
+    if not isinstance(review, str) or review.strip() == "":
+        return []
+    review = re.sub(r'<.*?>', ' ', review)
+    review = re.sub(r'[^a-zA-Z\s]', '', review.lower())
+    tokens = word_tokenize(review)
+    tokens = [lemmatizer.lemmatize(word) for word in tokens if word not in stop_words]
+    return tokens
+
+def weighted_vector(tokens, w2v_model, tfidf_vectorizer):
+    word2weight = dict(zip(tfidf_vectorizer.get_feature_names_out(), tfidf_vectorizer.idf_))
+    vectors, weights = [], []
+    for word in tokens:
+        if word in w2v_model.wv and word in word2weight:
+            vectors.append(w2v_model.wv[word])
+            weights.append(word2weight[word])
+    if not vectors:
+        return np.zeros(w2v_model.vector_size)
+    return np.average(vectors, axis=0, weights=weights)
+
+# -------------------------
+# UI Colors & CSS
 # -------------------------
 background = "linear-gradient(135deg, #eef2ff, #f8fafc)"
 text_color = "#000000"
@@ -30,10 +62,6 @@ box_bg = "#ffffff"
 border_color = "#e5e7eb"
 card_bg = "#f9fafb"
 subtitle_color = "#6b7280"
-analyze_btn = "linear-gradient(90deg, #2563eb, #1e40af)"
-clear_btn = "linear-gradient(90deg, #dc2626, #b91c1c)"
-button_text_color = "#000000"
-
 
 # -------------------------
 # CSS with Fade-In & Styling
@@ -137,7 +165,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # -------------------------
-# Header Section
+# Header
 # -------------------------
 st.markdown("""
 <div class="header">
@@ -147,48 +175,66 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -------------------------
-# Main Content Box
+# Main Box
 # -------------------------
 st.markdown("<div class='main-box'>", unsafe_allow_html=True)
-st.markdown("<h4><em> Enter your review</em></h4>", unsafe_allow_html=True)
+st.markdown("<h4><em>Enter your review</em></h4>", unsafe_allow_html=True)
 
 review_input = st.text_area(
-    "Movie Review Input", 
-    height=120, 
+    "Movie Review Input",
+    height=120,
     placeholder="Example: An amazing movie with a great cast and fantastic storyline!",
     label_visibility="collapsed"
 )
 
-# Buttons
 col1, col2 = st.columns(2)
+
+# Analyze Button
 with col1:
-    if st.button(" Analyze", key="analyze"):
-        if review_input.strip() == "":
-            st.warning(" Please enter a review.")
+    if st.button("Analyze", key="analyze"):
+        review_text = review_input.strip()
+        if review_text == "":
+            st.warning("Please enter a review.")
         else:
-            vec = vectorize_review(review_input, w2v_model).reshape(1, -1)
-            prediction = model.predict(vec)[0]
-            sentiment = "Positive 😊" if prediction == 1 else "Negative 😞"
-            color = "#16a34a" if prediction == 1 else "#dc2626"
+            try:
+                tokens = preprocess_review(review_text)
+                vec = weighted_vector(tokens, w2v_model, tfidf).reshape(1, -1)
+                prediction = model.predict(vec)[0]
 
-            st.markdown(
-                f"<div class='result-box' style='color:{color};'>Sentiment: {sentiment}</div>",
-                unsafe_allow_html=True
-            )
+                # Confidence (if model supports)
+                if hasattr(model, "predict_proba"):
+                    confidence = model.predict_proba(vec)[0][prediction]
+                    confidence_text = f" ({confidence*100:.1f}% confidence)"
+                else:
+                    confidence_text = ""
 
-            if "history" not in st.session_state:
-                st.session_state.history = []
-            # Store both review text and sentiment
-            st.session_state.history.append((review_input, sentiment))
+                sentiment = "Positive 😊" if prediction == 1 else "Negative 😞"
+                color = "#16a34a" if prediction == 1 else "#dc2626"
 
+                st.markdown(
+                    f"<div class='result-box' style='color:{color};'>Sentiment: {sentiment}{confidence_text}</div>",
+                    unsafe_allow_html=True
+                )
+
+                if "history" not in st.session_state:
+                    st.session_state.history = []
+                st.session_state.history.append((review_text, sentiment))
+                st.session_state.history = st.session_state.history[-20:]  # last 20 reviews
+
+            except Exception as e:
+                st.error(f"Prediction failed. Error: {e}")
+
+# Clear History Button
 with col2:
-    if st.button(" Clear History", key="clear"):
+    if st.button("Clear History", key="clear"):
         st.session_state.history = []
         st.success("History cleared successfully!")
 
-st.markdown("</div>", unsafe_allow_html=True)  # close main-box
+st.markdown("</div>", unsafe_allow_html=True)  # Close main-box
 
+# -------------------------
 # History Section
+# -------------------------
 if "history" in st.session_state and len(st.session_state.history) > 0:
     st.markdown("<div class='history-section'>", unsafe_allow_html=True)
     st.markdown("### Prediction History")
@@ -204,7 +250,9 @@ if "history" in st.session_state and len(st.session_state.history) > 0:
 
     st.markdown("</div>", unsafe_allow_html=True)
 
+# -------------------------
 # Footer
+# -------------------------
 st.markdown("---")
 st.markdown("""
 <div class="footer">
