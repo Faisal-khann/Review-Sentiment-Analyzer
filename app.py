@@ -34,6 +34,7 @@ analyze_btn = "linear-gradient(90deg, #2563eb, #1e40af)"
 clear_btn = "linear-gradient(90deg, #dc2626, #b91c1c)"
 button_text_color = "#000000"
 
+
 # -------------------------
 # CSS with Fade-In & Styling
 # -------------------------
@@ -67,31 +68,37 @@ st.markdown(f"""
     margin-top: -8px;
 }}
 
-.main-box {{
-    background-color: {box_bg};
-    border: 1px solid {border_color};
-    border-radius: 18px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-    padding: 35px;
-    width: 85%;
-    margin: auto;
-    transition: all 0.5s ease-in-out;
-}}
+# .main-box {{
+#     background-color: {box_bg};
+#     border: 1px solid {border_color};
+#     border-radius: 18px;
+#     box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+#     padding: 35px;
+#     width: 85%;
+#     margin: auto;
+#     transition: all 0.5s ease-in-out;
+# }}
 
 .stButton > button {{
+    background: linear-gradient(90deg, #1d4ed8, #2563eb); /* Professional blue gradient */
+    color: #ffffff !important; /* White text */
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 0.6em 1.2em !important;
     font-size: 16px !important;
-    border-radius: 8px !important;
-    padding: 0.6em 1em !important;
     font-weight: 600 !important;
-    border: 10px !important;
-    transition: all 0.25s ease-in-out !important;
+    transition: all 0.3s ease-in-out !important;
+    box-shadow: 0 3px 8px rgba(37, 99, 235, 0.3); /* Soft blue glow */
 }}
 .stButton > button:hover {{
-    transform: scale(1.03);
-    box-shadow: 0px 4px 14px rgba(0,0,0,0.2);
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 6px 14px rgba(37, 99, 235, 0.4);
+    background: linear-gradient(90deg, #2563eb, #1e40af); /* Slightly darker on hover */
 }}
-.analyze-btn > button {{ background: {analyze_btn} !important; color: {button_text_color} !important; }}
-.clear-btn > button {{ background: {clear_btn} !important; color: {button_text_color} !important; }}
+.stButton > button:active {{
+    transform: scale(0.98);
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+}}
 
 .result-box {{
     text-align: center;
