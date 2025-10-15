@@ -11,7 +11,7 @@ st.set_page_config(page_title="IMDB Sentiment Analyzer", page_icon="💬", layou
 # -------------------------
 # Load Models
 # -------------------------
-model = joblib.load("imdb_model.pkl")
+model = joblib.load("final_model.pkl")
 w2v_model = Word2Vec.load("word2vec.model")
 
 def vectorize_review(review, w2v_model):
