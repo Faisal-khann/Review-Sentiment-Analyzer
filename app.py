@@ -20,7 +20,7 @@ st.set_page_config(page_title="IMDB Sentiment Analyzer", page_icon="💬", layou
 
 
 model = joblib.load("final_model.pkl")
-w2v_model = Word2Vec.load("word2vec.model")
+w2v_model = Word2Vec.load("Word2Vec.model")
 tfidf = joblib.load("tfidf.pkl")
 
 # -------------------------
@@ -29,14 +29,26 @@ tfidf = joblib.load("tfidf.pkl")
 stop_words = set(stopwords.words('english'))
 lemmatizer = WordNetLemmatizer()
 
-def preprocess_review(review):
-    if not isinstance(review, str) or review.strip() == "":
+
+def preprocess_text(text):
+    if not isinstance(text, str):
         return []
-    review = re.sub(r'<.*?>', ' ', review)
-    review = re.sub(r'[^a-zA-Z\s]', '', review.lower())
-    tokens = word_tokenize(review)
-    tokens = [lemmatizer.lemmatize(word) for word in tokens if word not in stop_words]
+
+    # Remove HTML tags
+    text = re.sub(r'<.*?>', ' ', text)
+    text = text.lower()  # lowercase
+    text = re.sub(r'\d+', '', text)  # remove numbers
+
+    tokens = word_tokenize(text)
+
+    # Keep only alphabetic tokens and remove stopwords
+    tokens = [word for word in tokens if word.isalpha() and word not in stop_words]
+
+    # Lemmatize
+    tokens = [lemmatizer.lemmatize(word) for word in tokens]
+
     return tokens
+
 
 def weighted_vector(tokens, w2v_model, tfidf_vectorizer):
     word2weight = dict(zip(tfidf_vectorizer.get_feature_names_out(), tfidf_vectorizer.idf_))
@@ -193,7 +205,7 @@ with col1:
             st.warning("Please enter a review.")
         else:
             try:
-                tokens = preprocess_review(review_text)
+                tokens = preprocess_text(review_text)
                 vec = weighted_vector(tokens, w2v_model, tfidf).reshape(1, -1)
                 prediction = model.predict(vec)[0]
 
