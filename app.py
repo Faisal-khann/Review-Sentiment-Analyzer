@@ -7,6 +7,8 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 import nltk
+import sqlite3
+from datetime import datetime
 
 # -------------------------
 # Setup
@@ -43,6 +45,22 @@ def weighted_vector(tokens, w2v_model, tfidf_vectorizer):
     if not vectors:
         return np.zeros(w2v_model.vector_size)
     return np.average(vectors, axis=0, weights=weights)
+
+
+# -------------------------
+# SQLite Setup
+# -------------------------
+conn = sqlite3.connect("reviews.db")
+c = conn.cursor()
+c.execute("""
+CREATE TABLE IF NOT EXISTS reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    review_text TEXT,
+    sentiment TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+)
+""")
+conn.commit()
 
 # -------------------------
 # Custom CSS
@@ -173,14 +191,11 @@ review_input = st.text_area(
     placeholder="Example: A brilliant movie with powerful performances!"
 )
 
-# Single column for buttons
-with st.container():
-    col = st.columns([1])[0]  # full width left-aligned column
-    
-    analyze_btn = col.button("Analyze")
-    clear_btn = col.button("Clear History")
-    
-    if analyze_btn:
+col1, col2 = st.columns(2)
+
+# ANALYZE BUTTON
+with col1:
+    if st.button("Analyze"):
         if review_input.strip() == "":
             st.warning("Please enter a review.")
         else:
@@ -188,34 +203,40 @@ with st.container():
                 tokens = preprocess_text(review_input)
                 vec = weighted_vector(tokens, w2v_model, tfidf).reshape(1, -1)
                 pred = model.predict(vec)[0]
-
                 sentiment = "Positive 😊" if pred == 1 else "Negative 😞"
                 color = "#16a34a" if pred == 1 else "#dc2626"
 
                 st.markdown(f"<h3 style='color:{color};text-align:center;'>Sentiment: {sentiment}</h3>", unsafe_allow_html=True)
 
-                if "history" not in st.session_state:
-                    st.session_state.history = []
-                st.session_state.history.append((review_input, sentiment))
-                st.session_state.history = st.session_state.history[-20:]
+                # Save to database
+                c.execute("INSERT INTO reviews (review_text, sentiment) VALUES (?, ?)", (review_input, sentiment))
+                conn.commit()
+
             except Exception as e:
                 st.error(f"Error: {e}")
-    
-    if clear_btn:
-        st.session_state.history = []
+
+# CLEAR HISTORY BUTTON
+with col2:
+    if st.button("Clear History"):
+        c.execute("DELETE FROM reviews")
+        conn.commit()
         st.info("History cleared!")
 
-# History
-if "history" in st.session_state and st.session_state.history:
-    st.markdown("### Previous Analysis")
-    for i, (txt, sent) in enumerate(reversed(st.session_state.history), 1):
+# SHOW HISTORY
+st.markdown("### 🕒 Previous Analysis")
+c.execute("SELECT review_text, sentiment, timestamp FROM reviews ORDER BY id DESC LIMIT 20")
+rows = c.fetchall()
+if rows:
+    for i, (txt, sent, ts) in enumerate(rows, 1):
         color = "#10b981" if "Positive" in sent else "#ef4444"
-        st.markdown(f"<div style='border-left:5px solid {color};padding:10px;margin:5px 0;background:#f1f5f9;border-radius:6px;'><b style='color:{color}'>{sent}</b><br>{txt}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='border-left:5px solid {color};padding:10px;margin:5px 0;background:#f1f5f9;border-radius:6px;'><b style='color:{color}'>{sent}</b> <span style='font-size:12px;color:gray;'>({ts})</span><br>{txt}</div>", unsafe_allow_html=True)
+else:
+    st.info("No reviews yet.")
 
-st.markdown("</div></div>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
 # =====================================================
-# ⚙️ FOOTER SECTION
+# FOOTER SECTION
 # =====================================================
 st.markdown("""
 <div class="footer-section" id="footer">
